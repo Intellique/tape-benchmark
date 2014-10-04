@@ -1,0 +1,23 @@
+tape-benchmark (0.3.3) unstable; urgency=low
+
+  * Fix french man page
+
+ -- guillaume clercin <gclercin@intellique.com>  Sat, 04 Oct 2014 10:29:25 +0200
+
+tape-benchmark (0.3.2) unstable; urgency=low
+
+  * Fix install
+
+ -- guillaume clercin <gclercin@intellique.com>  Sat, 04 Oct 2014 10:10:21 +0200
+
+tape-benchmark (0.3.1) unstable; urgency=low
+
+  * Bug fix release
+
+ -- guillaume clercin <gclercin@intellique.com>  Sat, 04 Oct 2014 01:24:12 +0200
+
+tape-benchmark (0.3) unstable; urgency=low
+
+  * Initial Release.
+
+ -- guillaume clercin <gclercin@intellique.com>  Fri, 03 Oct 2014 22:38:17 +0200

@@ -22,7 +22,7 @@
 *                                                                           *
 *  -----------------------------------------------------------------------  *
 *  Copyright (C) 2014, Clercin guillaume <gclercin@intellique.com>          *
-*  Last modified: Mon, 29 Sep 2014 23:10:58 +0200                           *
+*  Last modified: Sat, 04 Oct 2014 12:06:34 +0200                           *
 \***************************************************************************/
 
 // errno
@@ -79,6 +79,9 @@ static bool rewind_tape(int fd);
  * \return \b true if \a size is a power of two
  */
 static bool check_size(ssize_t size) {
+	if (size < 0)
+		return false;
+
 	int i = 0;
 	ssize_t tsize = size;
 
@@ -218,20 +221,26 @@ int main(int argc, char ** argv) {
 
 			case OPT_MAX_BUFFER:
 				tmp_size = parse_size(optarg);
-				if (check_size(tmp_size)) {
+				if (tmp_size == -1) {
+					printf("Error: invalid size for max-buffer-size\n");
+					return 1;
+				} else if (tmp_size > 0 && check_size(tmp_size)) {
 					max_buffer_size = tmp_size;
 				} else {
-					printf("Error: max-buffer-size should be a power of two\n");
+					printf("Error: max-buffer-size should be positive and a power of two\n");
 					return 1;
 				}
 				break;
 
 			case OPT_MIN_BUFFER:
 				tmp_size = parse_size(optarg);
-				if (check_size(tmp_size)) {
+				if (tmp_size == -1) {
+					printf("Error: invalid size for min-buffer-size\n");
+					return 1;
+				} else if (tmp_size > 0 && check_size(tmp_size)) {
 					min_buffer_size = tmp_size;
 				} else {
-					printf("Error: min-buffer-size should be a power of two\n");
+					printf("Error: min-buffer-size should be positive and a power of two\n");
 					return 1;
 				}
 				break;
@@ -241,7 +250,16 @@ int main(int argc, char ** argv) {
 				break;
 
 			case OPT_SIZE:
-				size = parse_size(optarg);
+				tmp_size = parse_size(optarg);
+				if (tmp_size == -1) {
+					printf("Error: invalid size\n");
+					return 1;
+				} else if (tmp_size > 0) {
+					size = tmp_size;
+				} else {
+					printf("Error: size should be positive\n");
+					return 1;
+				}
 				break;
 
 			case OPT_REWIND:
@@ -513,6 +531,8 @@ static ssize_t parse_size(const char * size) {
 	int i;
 	for (i = 0; pattern[i].pat; i++) {
 		if (pattern[i].nbElt == 2 && sscanf(size, pattern[i].pat, &dsize, &mult) == 2) {
+			if (dsize < 0)
+				return -1;
 			if (mult == ' ')
 				continue;
 
@@ -537,13 +557,17 @@ static ssize_t parse_size(const char * size) {
 			if (mult == ' ')
 				continue;
 
-			return 1L << lsize;
+			return lsize > 0 ? 1L << lsize : -1;
 		}
 	}
 
 	return -1;
 }
 
+/**
+ * \brief print_flush is a shortcut of printf(format, ...) then fflush(stdout)
+ * \param format[in]: printf compatible format
+ */
 static void print_flush(const char * format, ...) {
 	va_list va;
 	va_start(va, format);
@@ -553,6 +577,9 @@ static void print_flush(const char * format, ...) {
 	fflush(stdout);
 }
 
+/**
+ * \brief print current time to stdout
+ */
 static void print_time() {
 	struct timespec now;
 	clock_gettime(CLOCK_REALTIME, &now);
@@ -560,9 +587,14 @@ static void print_time() {
 	char buf_time[32];
 	strftime(buf_time, 32, "[ %T ] ", localtime(&now.tv_sec));
 
-	printf(buf_time);
+	printf("%s", buf_time);
 }
 
+/**
+ * \brief rewind tape
+ * \param fd[in]: valid file descriptor
+ * \return true if success
+ */
 static bool rewind_tape(int fd) {
 	static struct mtop rewind = { MTREW, 1 };
 

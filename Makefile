@@ -45,8 +45,8 @@ endif
 
 
 # compilation flags
-CFLAGS		:= -std=gnu99 -pipe -O0 -ggdb3 -Wall -Wextra -Wabi -Werror-implicit-function-declaration -Wmissing-prototypes $(addprefix -I,${INCLUDE_DIR})
-LDFLAGS		:=
+CFLAGS		:= -std=gnu99 -pipe -O0 -ggdb3 -D_FORTIFY_SOURCE=2 -Wall -Wextra -Wabi -Werror-implicit-function-declaration -Wmissing-prototypes -Wformat-security -Werror=format-security -fstack-protector --param ssp-buffer-size=4 -fPIE -pie $(addprefix -I,${INCLUDE_DIR})
+LDFLAGS		:= -Wl,-z,relro,-z,now
 
 CSCOPE_OPT	:= -b -R -s src -U -I include
 CTAGS_OPT	:= -R src
@@ -80,10 +80,10 @@ ${CHCKSUM_DIR}/$${$(1)_CHCKSUM_FILE}: $${$(1)_SRC_FILES} $${$(1)_HEAD_FILES}
 $$($(1)_BIN): $$($(1)_DEPEND_LIB) $$($(1)_OBJ_FILES)
 	@echo " LD       $$@"
 	@${CC} -o $$@ $$($(1)_OBJ_FILES) ${LDFLAGS} $$($(1)_LD)
-	@${OBJCOPY} --only-keep-debug $$@ $$@.debug
-	@${STRIP} $$@
-	@${OBJCOPY} --add-gnu-debuglink=$$@.debug $$@
-	@chmod -x $$@.debug
+#	@${OBJCOPY} --only-keep-debug $$@ $$@.debug
+#	@${STRIP} $$@
+#	@${OBJCOPY} --add-gnu-debuglink=$$@.debug $$@
+#	@chmod -x $$@.debug
 
 $$($(1)_LIB): $$($(1)_DEPEND_LIB) $$($(1)_OBJ_FILES)
 	@echo " LD       $$@"
@@ -116,7 +116,7 @@ DEP_DIRS	:= $(patsubst ${BUILD_DIR}/%,${DEPEND_DIR}/%,${OBJ_DIRS})
 
 # phony target
 .DEFAULT_GOAL	:= all
-.PHONY: all binaries clean clean-depend cscope ctags debug distclean lib prepare realclean stat stat-extra TAGS tar
+.PHONY: all binaries clean clean-depend cscope ctags debug distclean install lib package prepare realclean stat stat-extra TAGS tar
 .NOTPARALLEL: prepare
 
 all: binaries cscope tags
@@ -145,13 +145,27 @@ debug: binaries
 	${GDB} bin/tape-benchmark
 
 distclean realclean: clean
-	@echo ' RM       -Rf cscope.out doc ${CHCKSUM_DIR} ${DEPEND_DIR} tags ${VERSION_FILE}'
-	@rm -Rf cscope.out doc ${CHCKSUM_DIR} ${DEPEND_DIR} tags ${VERSION_FILE}
+	@echo ' RM       -Rf cscope.out ${CHCKSUM_DIR} ${DEPEND_DIR} tags ${VERSION_FILE}'
+	@rm -Rf cscope.out ${CHCKSUM_DIR} ${DEPEND_DIR} tags ${VERSION_FILE}
 
 doc: Doxyfile ${LIBOBJECT_SRC_FILES} ${HEAD_FILES}
 	@echo ' DOXYGEN'
 	@${DOXYGEN}
 
+install: all
+	@echo ' MKDIR     ${DESTDIR}'
+	@mkdir -p ${DESTDIR}/etc/bash_completion.d ${DESTDIR}/usr/bin ${DESTDIR}/usr/share/man/fr/man1 ${DESTDIR}/usr/share/man/man1
+	@echo ' CP'
+	@cp script/tape-benchmark ${DESTDIR}/etc/bash_completion.d
+	@cp bin/tape-benchmark ${DESTDIR}/usr/bin
+	@cp doc/tape-benchmark.1 ${DESTDIR}/usr/share/man/man1
+	@cp doc/tape-benchmark.fr.1 ${DESTDIR}/usr/share/man/fr/man1/tape-benchmark.1
+
+package:
+	@echo ' CLEAN'
+	@dh_clean
+	@echo ' BUILD package'
+	@dpkg-buildpackage -us -uc -rfakeroot
 
 prepare: ${BIN_DIRS} ${CHCKSUM_DIR} ${DEP_DIRS} ${OBJ_DIRS} $(addprefix prepare_,${BIN_SYMS}) $(addprefix prepare_,${TEST_BIN_SYMS}) ${VERSION_FILE}
 
